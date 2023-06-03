@@ -1,0 +1,97 @@
+#include <ArduinoJson.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+StaticJsonDocument<100> doc;
+//Conection WiFi
+const char* ssid="*******";
+const char* password="************";
+int getRelay;
+const char* PutServerUrl="*******************";
+const char* ServerUrl="*************************";
+void setup() {
+  // put your setup code here, to run once:
+Serial.begin(115200);
+//pinMode(35,INPUT);
+WiFi.begin(ssid,password);
+delay(2000);
+Serial.print("Se esta conectando a la red wif denominada...");
+Serial.print(ssid);
+
+while(WiFi.status()!= WL_CONNECTED){
+  delay(500);
+  Serial.print("\n Connecting to Wi-Fi...");
+}
+//coneccion ya realizada
+Serial.print(" \n");
+Serial.print("WiFi CONECTED... \n");
+Serial.print("IP address: ");
+Serial.print(WiFi.localIP());
+
+doc["potenciometer"]=11;
+doc["relay"]=1;
+doc["liters"] = 18;
+PUTDATA();
+
+Serial.print("\n Hacer peticon Get para obtener valor relay : \n");
+getRelay=MGetRelay();
+Serial.print(getRelay);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+}
+int MGetRelay(){
+  HTTPClient http;
+// Specify the URL to make the GET request to
+  http.begin(ServerUrl);
+  //code
+  int httpResponseCode = http.GET();
+  //store Get
+  String payload = http.getString();
+ // Serial.println("\n Codigo de estado: " + String(httpResponseCode));
+ // Serial.println("\n valor de payload");
+ //Serial.println(payload);
+
+  char documentoJson[500];
+  payload.replace(" ", "");
+  payload.replace("\n", "");
+  payload.trim();
+  payload.remove(0,1);
+  payload.remove(payload.length()-1,1);
+  payload.toCharArray(documentoJson,500);
+
+//  Serial.println(documentoJson);
+
+  StaticJsonDocument<200> doc;
+
+  deserializeJson(doc,documentoJson);
+  int Getrelay = doc["relay"];
+  //Serial.println("\n  relay:" + String(Getrelay) + "\n");
+  return Getrelay;
+}
+void PUTDATA(){
+  if(WiFi.status()==WL_CONNECTED){
+    HTTPClient http;
+
+    http.begin(PutServerUrl);
+    http.addHeader("Content-Type","application/json");
+
+    //serialize the json objetc to string
+    String jsonString;
+     serializeJson(doc,jsonString);
+
+     Serial.println(jsonString);
+  
+     int httpResponseCode = http.PUT(jsonString);
+     Serial.println(httpResponseCode);
+
+     if(httpResponseCode == 200){
+      Serial.println("Data uploaded");
+     }else{
+      Serial.println("ERROR : Couldn't uploat deata");
+      Serial.print("\n HTTP response code: ");
+       Serial.println(httpResponseCode);
+     }
+  }
+}
